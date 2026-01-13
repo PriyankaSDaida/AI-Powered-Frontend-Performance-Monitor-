@@ -1,11 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, PlayCircle, X } from 'lucide-react';
+import { Clock, PlayCircle, X, Sparkles, Loader2 } from 'lucide-react';
 import ReplayPlayer from '@/components/ReplayPlayer';
+import ReactMarkdown from 'react-markdown';
 
 export default function ErrorList({ errors }: { errors: any[] }) {
     const [replayData, setReplayData] = useState<any[] | null>(null);
+    const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+    const [insights, setInsights] = useState<Record<string, string>>({});
+
+    const handleAnalyze = async (error: any, index: number) => {
+        const id = error.id || index.toString();
+        if (insights[id]) return; // Already analyzed
+
+        setAnalyzingId(id);
+        try {
+            const res = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ error })
+            });
+            const data = await res.json();
+            setInsights(prev => ({ ...prev, [id]: data.insight || 'Failed to generate insight.' }));
+        } catch (e) {
+            console.error(e);
+            setInsights(prev => ({ ...prev, [id]: 'Error contacting AI service.' }));
+        } finally {
+            setAnalyzingId(null);
+        }
+    };
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden relative">
@@ -45,28 +69,53 @@ export default function ErrorList({ errors }: { errors: any[] }) {
                                         Play Session
                                     </button>
                                 )}
+
+                                <button
+                                    onClick={() => handleAnalyze(err, i)}
+                                    disabled={!!analyzingId}
+                                    className={`flex items-center gap-1 text-xs bg-purple-50 text-purple-600 px-3 py-1 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors disabled:opacity-50 ${(!err.replayEvents || err.replayEvents.length === 0) ? 'ml-auto' : ''}`}
+                                >
+                                    {analyzingId === (err.id || i.toString()) ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="w-3 h-3" />
+                                    )}
+                                    Analyze with AI
+                                </button>
                             </div>
+
+                            {insights[err.id || i.toString()] && (
+                                <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100 text-sm text-gray-800 prose prose-purple max-w-none">
+                                    <div className="flex items-center gap-2 mb-2 font-semibold text-purple-800">
+                                        <Sparkles className="w-4 h-4" />
+                                        AI Insight
+                                    </div>
+                                    <ReactMarkdown>{insights[err.id || i.toString()]}</ReactMarkdown>
+                                </div>
+                            )}
                         </div>
                     ))
                 )}
             </div>
 
             {/* Replay Modal Overlay */}
-            {replayData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh]">
-                        <div className="p-4 border-b flex justify-between items-center">
-                            <h3 className="font-semibold text-lg">Session Replay</h3>
-                            <button onClick={() => setReplayData(null)} className="p-1 hover:bg-gray-100 rounded-full">
-                                <X className="w-6 h-6 text-gray-500" />
-                            </button>
-                        </div>
-                        <div className="p-4 bg-gray-50 flex-1 overflow-auto flex justify-center">
-                            <ReplayPlayer events={replayData} />
+            {
+                replayData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh]">
+                            <div className="p-4 border-b flex justify-between items-center">
+                                <h3 className="font-semibold text-lg">Session Replay</h3>
+                                <button onClick={() => setReplayData(null)} className="p-1 hover:bg-gray-100 rounded-full">
+                                    <X className="w-6 h-6 text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="p-4 bg-gray-50 flex-1 overflow-auto flex justify-center">
+                                <ReplayPlayer events={replayData} />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
