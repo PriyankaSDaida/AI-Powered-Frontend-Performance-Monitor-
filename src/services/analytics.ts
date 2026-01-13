@@ -1,0 +1,127 @@
+import db from '@/lib/db';
+
+export interface VitalMetric {
+    name: string;
+    value: number;
+    rating: 'good' | 'needs-improvement' | 'poor';
+    delta?: number;
+}
+
+export type Period = '1h' | '24h' | '7d';
+
+function getTimeRange(period: Period): number {
+    const now = Date.now();
+    switch (period) {
+        case '1h': return now - 60 * 60 * 1000;
+        case '24h': return now - 24 * 60 * 60 * 1000;
+        case '7d': return now - 7 * 24 * 60 * 60 * 1000;
+        default: return now - 24 * 60 * 60 * 1000;
+    }
+}
+
+function getRating(name: string, value: number): 'good' | 'needs-improvement' | 'poor' {
+    // Thresholds based on Web Vitals
+    if (name === 'LCP') return value <= 2500 ? 'good' : value <= 4000 ? 'needs-improvement' : 'poor';
+    if (name === 'CLS') return value <= 0.1 ? 'good' : value <= 0.25 ? 'needs-improvement' : 'poor';
+    if (name === 'INP') return value <= 200 ? 'good' : value <= 500 ? 'needs-improvement' : 'poor';
+    if (name === 'TTFB') return value <= 800 ? 'good' : value <= 1800 ? 'needs-improvement' : 'poor';
+    return 'good';
+}
+
+export async function getDashboardStats(appId: string, period: Period = '24h') {
+    const since = getTimeRange(period);
+
+    // Vitals: Get P75 for each metric
+    const vitalsStmt = db.prepare(`
+    SELECT payload 
+    FROM events 
+    WHERE appId = ? AND type = 'vital' AND timestamp > ?
+  `);
+
+    const vitalRows = vitalsStmt.all(appId, since) as any[];
+
+    const aggregatedVitals: Record<string, number[]> = {
+        LCP: [], CLS: [], INP: [], TTFB: []
+    };
+
+    vitalRows.forEach(row => {
+        const p = JSON.parse(row.payload);
+        if (aggregatedVitals[p.name]) {
+            aggregatedVitals[p.name].push(p.value);
+        }
+    });
+
+    const vitals = Object.entries(aggregatedVitals).map(([name, values]) => {
+        if (values.length === 0) return { name, value: 0, rating: 'good' } as VitalMetric;
+
+        // Sort and pick P75
+        values.sort((a, b) => a - b);
+        const p75Index = Math.floor(values.length * 0.75);
+        const value = values[p75Index];
+
+        return {
+            name,
+            value: Math.round(value * 100) / 100, // round to 2 decimals
+            rating: getRating(name, value)
+        } as VitalMetric;
+    });
+
+    // Error Count
+    const errorStmt = db.prepare(`
+    SELECT count(*) as count 
+    FROM events 
+    WHERE appId = ? AND type = 'error' AND timestamp > ?
+  `);
+    const errorCount = (errorStmt.get(appId, since) as any).count;
+
+    // Recent Errors (List)
+    const recentErrorsStmt = db.prepare(`
+    SELECT payload, timestamp 
+    FROM events 
+    WHERE appId = ? AND type = 'error' AND timestamp > ? 
+    ORDER BY timestamp DESC 
+    LIMIT 10
+  `);
+    const recentErrors = (recentErrorsStmt.all(appId, since) as any[]).map(row => ({
+        ...JSON.parse(row.payload),
+        timestamp: row.timestamp
+    }));
+
+    return {
+        vitals,
+        errorCount,
+        recentErrors
+    };
+}
+
+export async function getEventTimeSeries(appId: string, period: Period = '24h') {
+    // Construct simplified time buckets for charts
+    const since = getTimeRange(period);
+
+    // Group by hour (or minute depending on range)
+    // SQLite doesn't have great date functions by default compared to other DBs, doing simple JS mapping for MVP
+    const eventsStmt = db.prepare(`
+        SELECT timestamp, type 
+        FROM events 
+        WHERE appId = ? AND timestamp > ?
+    `);
+    const rows = eventsStmt.all(appId, since) as any[];
+
+    // Bucket by hour
+    const buckets: Record<string, { vitals: number, errors: number, time: number }> = {};
+
+    rows.forEach(row => {
+        const date = new Date(row.timestamp);
+        date.setMinutes(0, 0, 0); // round to hour
+        const key = date.toISOString();
+
+        if (!buckets[key]) {
+            buckets[key] = { vitals: 0, errors: 0, time: date.getTime() };
+        }
+
+        if (row.type === 'vital') buckets[key].vitals++;
+        if (row.type === 'error') buckets[key].errors++;
+    });
+
+    return Object.values(buckets).sort((a, b) => a.time - b.time);
+}
