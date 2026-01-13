@@ -1,6 +1,7 @@
 import { getDashboardStats, getEventTimeSeries, VitalMetric } from '@/services/analytics';
 import EventsChart from '@/components/charts/EventsChart';
-import { AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import ErrorList from './ErrorList';
+import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Force dynamic rendering so we collect fresh data on refresh
@@ -54,38 +55,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* Recent Errors */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                    <h3 className="text-lg font-medium text-gray-800">Recent Errors</h3>
-                    <span className="text-sm text-gray-500">Total: {stats.errorCount}</span>
-                </div>
-                <div className="divide-y divide-gray-100">
-                    {stats.recentErrors.length === 0 ? (
-                        <div className="p-8 text-center text-gray-400">No errors recorded recently.</div>
-                    ) : (
-                        stats.recentErrors.map((err: any, i: number) => (
-                            <div key={i} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                                <div className="flex justify-between items-start">
-                                    <div className="text-red-700 font-medium break-all">{err.message || 'Unknown Error'}</div>
-                                    <div className="flex items-center text-xs text-gray-400 whitespace-nowrap ml-4">
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        {new Date(err.timestamp).toLocaleTimeString()}
-                                    </div>
-                                </div>
-                                {err.stack && (
-                                    <pre className="mt-2 text-xs text-gray-500 overflow-x-auto p-2 bg-gray-100 rounded">
-                                        {err.stack.split('\n')[0]}...
-                                    </pre>
-                                )}
-                                <div className="mt-2 flex gap-2">
-                                    {err.filename && <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">{err.filename}</span>}
-                                    {err.type && <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100">{err.type}</span>}
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
+            <ErrorList errors={stats.recentErrors} />
         </div>
     );
 }
