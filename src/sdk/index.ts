@@ -1,5 +1,6 @@
 import { onCLS, onINP, onLCP, onTTFB, Metric } from 'web-vitals';
 import { v4 as uuidv4 } from 'uuid';
+import { record } from 'rrweb';
 
 interface Config {
     appId: string;
@@ -16,6 +17,7 @@ interface MonitorEvent {
 class AIFrontendMonitor {
     private config: Config;
     private eventBuffer: MonitorEvent[] = [];
+    private replayEvents: any[] = [];
     private batchSize = 5;
     private flushInterval = 5000;
     private isProcessing = false;
@@ -25,7 +27,22 @@ class AIFrontendMonitor {
         if (!this.config.disableAnalytics) {
             this.initVitals();
             this.initErrorTracking();
+            this.initSessionReplay();
             this.startFlushInterval();
+        }
+    }
+
+    private initSessionReplay() {
+        if (typeof window !== 'undefined') {
+            record({
+                emit: (event) => {
+                    this.replayEvents.push(event);
+                    // Keep last 100 events to avoid memory bloat
+                    if (this.replayEvents.length > 100) {
+                        this.replayEvents.shift();
+                    }
+                },
+            });
         }
     }
 
@@ -54,7 +71,8 @@ class AIFrontendMonitor {
                         filename: event.filename,
                         lineno: event.lineno,
                         colno: event.colno,
-                        stack: event.error?.stack
+                        stack: event.error?.stack,
+                        replayEvents: [...this.replayEvents] // Attach current session replay
                     },
                     timestamp: Date.now()
                 });
@@ -66,7 +84,8 @@ class AIFrontendMonitor {
                     payload: {
                         message: event.reason?.message || 'Unhandled Rejection',
                         stack: event.reason?.stack,
-                        type: 'unhandledrejection'
+                        type: 'unhandledrejection',
+                        replayEvents: [...this.replayEvents] // Attach current session replay
                     },
                     timestamp: Date.now()
                 });
