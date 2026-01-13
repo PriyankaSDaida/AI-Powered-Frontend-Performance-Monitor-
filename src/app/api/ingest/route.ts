@@ -3,6 +3,7 @@ import { saveEvent } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 import geoip from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
+import { checkAlertCondition } from '@/services/alerts';
 
 export async function POST(request: NextRequest) {
     try {
@@ -30,25 +31,33 @@ export async function POST(request: NextRequest) {
             // Merge common metadata with event specific data if needed
             // For now, we assume eventData contains the core metric info
 
+            const fullPayload = {
+                ...commonMetadata,
+                ...eventData,
+                device: {
+                    browser: device.browser.name,
+                    os: device.os.name,
+                    type: device.device.type || 'desktop'
+                },
+                geo: {
+                    country: geo?.country || 'Unknown',
+                    city: geo?.city || 'Unknown'
+                }
+            };
+
             saveEvent({
                 id: uuidv4(),
                 appId,
                 type: eventData.type || 'unknown',
                 timestamp: Date.now(), // or eventData.timestamp if trusted
-                payload: {
-                    ...commonMetadata,
-                    ...eventData,
-                    device: {
-                        browser: device.browser.name,
-                        os: device.os.name,
-                        type: device.device.type || 'desktop'
-                    },
-                    geo: {
-                        country: geo?.country || 'Unknown',
-                        city: geo?.city || 'Unknown'
-                    }
-                }
+                payload: fullPayload
             });
+
+            // Trigger Alerts (Async, don't block response)
+            checkAlertCondition({
+                type: eventData.type || 'unknown',
+                payload: fullPayload
+            }).catch(e => console.error("Alert check failed", e));
         });
 
         return NextResponse.json({ success: true, count: events.length }, { status: 202 });
