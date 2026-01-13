@@ -2,10 +2,10 @@ import { IEvent } from '@/lib/db';
 
 const WEBHOOK_URL = process.env.ALERT_WEBHOOK_URL;
 
-// In-memory cache for rate limiting (simple MVP approach)
-// In production, use Redis or database
+// Simple in-memory deduplication to avoid spamming the webhook channel.
+// We track unique errors by a fingerprint and enforce a hard window rate limit.
 const sentAlerts = new Set<string>();
-const ERROR_RATE_WINDOW = 60 * 1000; // 1 minute
+const ERROR_RATE_WINDOW = 60 * 1000; // 1 minute window
 let errorCountLastWindow = 0;
 let lastWindowStart = Date.now();
 

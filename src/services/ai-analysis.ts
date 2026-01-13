@@ -1,4 +1,8 @@
 
+/**
+ * Generates actionable insights for frontend errors using OpenAI.
+ * This function constructs a prompt with context (browser, OS, stack) and asks the LLM for a fix.
+ */
 export async function generateErrorInsight(errorData: any) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
