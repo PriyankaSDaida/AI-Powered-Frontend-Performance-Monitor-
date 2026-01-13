@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
                 geo: {
                     country: geo?.country || 'Unknown',
                     city: geo?.city || 'Unknown'
-                }
+                },
+                user: commonMetadata?.user || null
             };
 
             saveEvent({
