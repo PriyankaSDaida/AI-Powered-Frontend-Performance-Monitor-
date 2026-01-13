@@ -34,6 +34,21 @@ graph TD
     end
 ```
 
+### 🧠 Diagram Explanation
+
+1.  **Event Capture (Client Side)**:
+    *   The **AI Monitor SDK** is mounted in your application.
+    *   It automatically listens for **Web Vitals** (via `web-vitals` library) and **JavaScript Errors** (via global event listeners).
+    *   Events are buffered locally to avoid spamming the network.
+2.  **Data Transmission**:
+    *   When the buffer fills or a timer fires, events are batched into a JSON payload.
+    *   This payload is sent via a `POST` request to the `/api/ingest` endpoint using `fetch` with `keepalive` to ensure data delivery even during page navigation.
+3.  **Ingestion & Storage (Server Side)**:
+    *   The **Ingestion API** receives the payload, assigns unique IDs, and validates the data.
+    *   Events are written synchronously to the **SQLite Database** for persistent storage.
+4.  **Visualization**:
+    *   The **Dashboard UI** queries the database to calculate aggregates (e.g., Average LCP, Error Counts) and renders them into interactive charts.
+
 ---
 
 ## 🚀 Key Features
