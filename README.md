@@ -17,9 +17,9 @@ graph TD
     subgraph Client ["Client Browser (User App)"]
         UserApp["User Application"]
         SDK["AI Monitor SDK"]
-        UserApp -->|Mounts| SDK
-        SDK -->|Captures| Vitals["Web Vitals (LCP, CLS, INP)"]
-        SDK -->|Captures| Errors["JS Errors & Promise Rejections"]
+        UserApp -- "Mounts" --> SDK
+        SDK -- "Captures" --> Vitals["Web Vitals (LCP, CLS, INP)"]
+        SDK -- "Captures" --> Errors["JS Errors & Promise Rejections"]
         SDK -- "Batches & Flushes (JSON)" --> Network
     end
 
@@ -28,9 +28,9 @@ graph TD
         Dashboard["Dashboard UI"]
         DB[("SQLite Database")]
         
-        Network -->|Sends Events| IngestAPI
-        IngestAPI -->| "writes (uuid, payload)" | DB
-        Dashboard -->| "queries (aggregates)" | DB
+        Network -- "Sends Events" --> IngestAPI
+        IngestAPI -- "writes (uuid, payload)" --> DB
+        Dashboard -- "queries (aggregates)" --> DB
     end
 ```
 
