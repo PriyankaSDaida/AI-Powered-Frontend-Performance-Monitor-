@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { symbolicateStackTrace } from '@/lib/symbolicator';
 
 export interface VitalMetric {
     name: string;
@@ -82,9 +83,23 @@ export async function getDashboardStats(appId: string, period: Period = '24h') {
     ORDER BY timestamp DESC 
     LIMIT 10
   `);
-    const recentErrors = (recentErrorsStmt.all(appId, since) as any[]).map(row => ({
+    const recentErrorsRaw = (recentErrorsStmt.all(appId, since) as any[]).map(row => ({
         ...JSON.parse(row.payload),
         timestamp: row.timestamp
+    }));
+
+    // Symbolicate errors if map file exists
+    // Note: In real world, we need 'release' from the event payload.
+    // We'll assume a default or check if event has release.
+    const recentErrors = await Promise.all(recentErrorsRaw.map(async (err: any) => {
+        if (err.stack) {
+            // For MVP, assuming a fixed release or extracting from payload if available.
+            // If the user didn't send release, symbolication might fail or use latest.
+            const release = err.release || '1.0.0'; // Fallback
+            const newStack = await symbolicateStackTrace(err.stack, release);
+            return { ...err, stack: newStack };
+        }
+        return err;
     }));
 
     return {
