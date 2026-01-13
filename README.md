@@ -29,8 +29,8 @@ graph TD
         DB[("SQLite Database")]
         
         Network -->|Sends Events| IngestAPI
-        IngestAPI -->| writes (uuid, payload) | DB
-        Dashboard -->| queries (aggregates) | DB
+        IngestAPI -->| "writes (uuid, payload)" | DB
+        Dashboard -->| "queries (aggregates)" | DB
     end
 ```
 
