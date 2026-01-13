@@ -19,18 +19,23 @@ graph TD
         SDK["AI Monitor SDK"]
         UserApp -- "Mounts" --> SDK
         SDK -- "Captures" --> Vitals["Web Vitals (LCP, CLS, INP)"]
-        SDK -- "Captures" --> Errors["JS Errors & Promise Rejections"]
-        SDK -- "Batches & Flushes (JSON)" --> Network
+        SDK -- "Captures" --> Errors["JS Errors & Rejections"]
+        SDK -- "Batches & Flushes" --> Network
     end
 
     subgraph Server ["Monitoring Platform (Next.js)"]
         IngestAPI["/api/ingest (POST)"]
         Dashboard["Dashboard UI"]
         DB[("SQLite Database")]
+        Alerts["Alert Service"]
         
         Network -- "Sends Events" --> IngestAPI
-        IngestAPI -- "writes (uuid, payload)" --> DB
-        Dashboard -- "queries (aggregates)" --> DB
+        IngestAPI -- "Enriches (Geo/Device)" --> IngestAPI
+        IngestAPI -- "Writes (uuid, payload)" --> DB
+        IngestAPI -- "Checks Triggers" --> Alerts
+        
+        Dashboard -- "Queries (Aggregates)" --> DB
+        Alerts -- "Webhook (JSON)" --> DiscordSlack["Discord / Slack"]
     end
 ```
 
@@ -44,8 +49,9 @@ graph TD
     *   When the buffer fills or a timer fires, events are batched into a JSON payload.
     *   This payload is sent via a `POST` request to the `/api/ingest` endpoint using `fetch` with `keepalive` to ensure data delivery even during page navigation.
 3.  **Ingestion & Storage (Server Side)**:
-    *   The **Ingestion API** receives the payload, assigns unique IDs, and validates the data.
-    *   Events are written synchronously to the **SQLite Database** for persistent storage.
+    *   The **Ingestion API** receives the payload and adds **Geo/Device data** (Country, Browser, OS) based on IP and User-Agent.
+    *   Events are written synchronously to the **SQLite Database**.
+    *   The **Alert Service** checks for critical conditions (like high error rates) and triggers Webhooks if needed.
 4.  **Visualization**:
     *   The **Dashboard UI** queries the database to calculate aggregates (e.g., Average LCP, Error Counts) and renders them into interactive charts.
 
@@ -60,6 +66,8 @@ graph TD
 *   **Zero-Config Dashboard**: clear, detailed visualization of your app's health out of the box.
 *   **Session Replay**: Record DOM mutations (via `rrweb`) to replay interactions leading up to an error.
 *   **Source Map Support**: Upload source maps to un-minify stack traces for easier debugging.
+*   **Geographic & Device Analytics**: Visualize user demographics (Country, Browser, OS, Device Type).
+*   **Real-time Alerting**: Webhooks (Slack/Discord) for critical errors and performance spikes.
 
 ---
 
@@ -150,8 +158,6 @@ rm monitoring.db && npm run dev
 
 ## 🔮 Future Roadmap
 
-*   **🔔 Alerting System**: Webhook integrations (Slack/Discord) for performance regressions or error spikes.
-*   **🌍 Geographic & Device Breakdown**: Visualizations for performance by country and device type.
 *   **🤖 AI Insight Generator**: LLM-powered analysis of error clusters to suggest fixes.
 *   **🆔 User Identification**: Tag sessions with user IDs for easier support debugging.
 
