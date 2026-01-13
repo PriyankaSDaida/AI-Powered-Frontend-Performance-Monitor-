@@ -29,7 +29,11 @@ function getRating(name: string, value: number): 'good' | 'needs-improvement' | 
     return 'good';
 }
 
-export async function getDashboardStats(appId: string, period: Period = '24h') {
+export async function getDashboardStats(
+    appId: string,
+    period: Period = '24h',
+    filters?: { userId?: string; hasReplay?: boolean }
+) {
     const since = getTimeRange(period);
 
     // Vitals: Get P75 for each metric
@@ -67,34 +71,42 @@ export async function getDashboardStats(appId: string, period: Period = '24h') {
         } as VitalMetric;
     });
 
+    // Dynamic base query for errors
+    let errorBaseQuery = `FROM events WHERE appId = ? AND type = 'error' AND timestamp > ?`;
+    const errorParams: any[] = [appId, since];
+
+    if (filters?.userId) {
+        errorBaseQuery += ` AND json_extract(payload, '$.user.id') = ?`;
+        errorParams.push(filters.userId);
+    }
+
+    if (filters?.hasReplay) {
+        // Check if replayEvents array has elements. 
+        // Note: Check if json_array_length works in your sqlite version, otherwise fallback to LIKE or app-side filtering relative to scale.
+        errorBaseQuery += ` AND json_array_length(json_extract(payload, '$.replayEvents')) > 0`;
+    }
+
     // Error Count
-    const errorStmt = db.prepare(`
-    SELECT count(*) as count 
-    FROM events 
-    WHERE appId = ? AND type = 'error' AND timestamp > ?
-  `);
-    const errorCount = (errorStmt.get(appId, since) as any).count;
+    const errorStmt = db.prepare(`SELECT count(*) as count ${errorBaseQuery}`);
+    const errorCount = (errorStmt.get(...errorParams) as any).count;
 
     // Recent Errors (List)
     const recentErrorsStmt = db.prepare(`
-    SELECT payload, timestamp 
-    FROM events 
-    WHERE appId = ? AND type = 'error' AND timestamp > ? 
-    ORDER BY timestamp DESC 
-    LIMIT 10
-  `);
-    const recentErrorsRaw = (recentErrorsStmt.all(appId, since) as any[]).map(row => ({
+        SELECT payload, timestamp 
+        ${errorBaseQuery}
+        ORDER BY timestamp DESC 
+        LIMIT 20
+    `);
+
+    // Spread params
+    const recentErrorsRaw = (recentErrorsStmt.all(...errorParams) as any[]).map(row => ({
         ...JSON.parse(row.payload),
         timestamp: row.timestamp
     }));
 
     // Symbolicate errors if map file exists
-    // Note: In real world, we need 'release' from the event payload.
-    // We'll assume a default or check if event has release.
     const recentErrors = await Promise.all(recentErrorsRaw.map(async (err: any) => {
         if (err.stack) {
-            // For MVP, assuming a fixed release or extracting from payload if available.
-            // If the user didn't send release, symbolication might fail or use latest.
             const release = err.release || '1.0.0'; // Fallback
             const newStack = await symbolicateStackTrace(err.stack, release);
             return { ...err, stack: newStack };

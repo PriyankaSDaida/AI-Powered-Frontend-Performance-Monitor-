@@ -32,14 +32,25 @@ function MetricCard({ metric }: { metric: VitalMetric }) {
     );
 }
 
-export default async function DashboardPage() {
+import DashboardFilters from '@/components/dashboard/Filters';
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+    const params = await searchParams;
+    const userId = typeof params.userId === 'string' ? params.userId : undefined;
+    const hasReplay = params.hasReplay === 'true';
+
     const appId = 'self-monitor-001';
-    const stats = await getDashboardStats(appId, '24h');
+
+    // Pass filters to analytics
+    const stats = await getDashboardStats(appId, '24h', { userId, hasReplay });
+
     const timeSeries = await getEventTimeSeries(appId, '24h');
     const demographics = await getDemographics(appId, '24h');
 
     return (
         <div className="space-y-8">
+            <DashboardFilters />
+
             {/* Vitals Grid */}
             <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Core Web Vitals (P75, Last 24h)</h3>
