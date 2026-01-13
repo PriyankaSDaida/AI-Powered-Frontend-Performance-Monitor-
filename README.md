@@ -146,5 +146,16 @@ rm monitoring.db && npm run dev
 
 ---
 
+## 🔮 Future Roadmap
+
+*   **🐞 Session Replay**: Record DOM mutations (via `rrweb`) to replay exactly what the user saw before an error.
+*   **🗺️ Source Map Support**: Upload source maps to un-minify stack traces in production.
+*   **🔔 Alerting System**: Webhook integrations (Slack/Discord) for performance regressions or error spikes.
+*   **🌍 Geographic & Device Breakdown**: Visualizations for performance by country and device type.
+*   **🤖 AI Insight Generator**: LLM-powered analysis of error clusters to suggest fixes.
+*   **🆔 User Identification**: Tag sessions with user IDs for easier support debugging.
+
+---
+
 ## 📜 License
 MIT
