@@ -1,5 +1,6 @@
-import { getDashboardStats, getEventTimeSeries, VitalMetric } from '@/services/analytics';
+import { getDashboardStats, getEventTimeSeries, getDemographics, VitalMetric } from '@/services/analytics';
 import EventsChart from '@/components/charts/EventsChart';
+import Demographics from '@/components/dashboard/Demographics';
 import ErrorList from './ErrorList';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ export default async function DashboardPage() {
     const appId = 'self-monitor-001';
     const stats = await getDashboardStats(appId, '24h');
     const timeSeries = await getEventTimeSeries(appId, '24h');
+    const demographics = await getDemographics(appId, '24h');
 
     return (
         <div className="space-y-8">
@@ -56,6 +58,10 @@ export default async function DashboardPage() {
 
             {/* Recent Errors */}
             <ErrorList errors={stats.recentErrors} />
+
+            {/* Demographics */}
+            <h3 className="text-lg font-medium text-gray-900">Demographics & Devices</h3>
+            <Demographics data={demographics} />
         </div>
     );
 }

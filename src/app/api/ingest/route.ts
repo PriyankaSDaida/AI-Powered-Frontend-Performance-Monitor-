@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveEvent } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
+import geoip from 'geoip-lite';
+import { UAParser } from 'ua-parser-js';
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,6 +14,16 @@ export async function POST(request: NextRequest) {
         }
 
         const { appId, events, commonMetadata } = body;
+
+        // Parse User Agent
+        // @ts-ignore
+        const uaParser = new UAParser(commonMetadata?.userAgent || request.headers.get('user-agent') || '');
+        const device = uaParser.getResult();
+
+        // Detect Geo
+        let ip = request.headers.get('x-forwarded-for') || (request as any).ip || '127.0.0.1';
+        if (ip.includes(',')) ip = ip.split(',')[0];
+        const geo = geoip.lookup(ip);
 
         // Process batch of events
         events.forEach((eventData: any) => {
@@ -25,7 +37,16 @@ export async function POST(request: NextRequest) {
                 timestamp: Date.now(), // or eventData.timestamp if trusted
                 payload: {
                     ...commonMetadata,
-                    ...eventData
+                    ...eventData,
+                    device: {
+                        browser: device.browser.name,
+                        os: device.os.name,
+                        type: device.device.type || 'desktop'
+                    },
+                    geo: {
+                        country: geo?.country || 'Unknown',
+                        city: geo?.city || 'Unknown'
+                    }
                 }
             });
         });

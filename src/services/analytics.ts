@@ -140,3 +140,36 @@ export async function getEventTimeSeries(appId: string, period: Period = '24h') 
 
     return Object.values(buckets).sort((a, b) => a.time - b.time);
 }
+
+export async function getDemographics(appId: string, period: Period = '24h') {
+    const since = getTimeRange(period);
+
+    // Top Browsers
+    const browserStmt = db.prepare(`
+        SELECT payload
+        FROM events
+        WHERE appId = ? AND timestamp > ?
+    `);
+
+    const rows = browserStmt.all(appId, since) as any[];
+
+    const browsers: Record<string, number> = {};
+    const countries: Record<string, number> = {};
+
+    rows.forEach(row => {
+        const p = JSON.parse(row.payload);
+
+        // Count Browser
+        const b = p.device?.browser || 'Unknown';
+        browsers[b] = (browsers[b] || 0) + 1;
+
+        // Count Country
+        const c = p.geo?.country || 'Unknown';
+        countries[c] = (countries[c] || 0) + 1;
+    });
+
+    return {
+        browsers: Object.entries(browsers).map(([name, count]) => ({ name, value: count })).sort((a, b) => b.value - a.value),
+        countries: Object.entries(countries).map(([name, count]) => ({ name, value: count })).sort((a, b) => b.value - a.value)
+    };
+}
