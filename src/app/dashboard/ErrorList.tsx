@@ -59,6 +59,11 @@ export default function ErrorList({ errors }: { errors: any[] }) {
                             <div className="mt-2 flex gap-2 items-center">
                                 {err.filename && <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">{err.filename}</span>}
                                 {err.type && <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100">{err.type}</span>}
+                                {err.payload?.user?.id && (
+                                    <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100 flex items-center gap-1">
+                                        <span className="font-semibold">User:</span> {err.payload.user.id}
+                                    </span>
+                                )}
 
                                 {err.replayEvents && err.replayEvents.length > 0 && (
                                     <button

@@ -21,6 +21,7 @@ class AIFrontendMonitor {
     private batchSize = 5;
     private flushInterval = 5000;
     private isProcessing = false;
+    private user: { id: string; email?: string; username?: string } | null = null;
 
     constructor(config: Config) {
         this.config = config;
@@ -44,6 +45,10 @@ class AIFrontendMonitor {
                 },
             });
         }
+    }
+
+    public setUser(id: string, email?: string, username?: string) {
+        this.user = { id, email, username };
     }
 
     private initVitals() {
@@ -125,6 +130,7 @@ class AIFrontendMonitor {
                     commonMetadata: {
                         userAgent: navigator.userAgent,
                         url: window.location.href,
+                        user: this.user
                     }
                 }),
                 keepalive: true, // Attempt to send even if page is closing
