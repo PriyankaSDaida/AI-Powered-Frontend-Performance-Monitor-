@@ -35,6 +35,7 @@ graph TD
         IngestAPI -- "Checks Triggers" --> Alerts
         
         Dashboard -- "Queries (Aggregates)" --> DB
+        Dashboard -- "Analysis Request" --> AI["AI Service (OpenAI)"]
         Alerts -- "Webhook (JSON)" --> DiscordSlack["Discord / Slack"]
     end
 ```
@@ -68,6 +69,8 @@ graph TD
 *   **Source Map Support**: Upload source maps to un-minify stack traces for easier debugging.
 *   **Geographic & Device Analytics**: Visualize user demographics (Country, Browser, OS, Device Type).
 *   **Real-time Alerting**: Webhooks (Slack/Discord) for critical errors and performance spikes.
+*   **AI Insight Generator**: One-click AI analysis of error stack traces to get actionable fix suggestions.
+*   **User Identification**: Tag sessions with specific user IDs to debug issues for individual customers.
 
 ---
 
@@ -158,8 +161,8 @@ rm monitoring.db && npm run dev
 
 ## 🔮 Future Roadmap
 
-*   **🤖 AI Insight Generator**: LLM-powered analysis of error clusters to suggest fixes.
-*   **🆔 User Identification**: Tag sessions with user IDs for easier support debugging.
+*   **Advanced Filtering**: Filter dashboard views by specific User IDs or Session Replay availability.
+*   **Performance Budgeting**: Set thresholds for Core Web Vitals and get alerted on regression.
 
 ---
 
