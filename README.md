@@ -58,6 +58,8 @@ graph TD
 *   **Smart Buffering**: Events are batched and sent periodically to minimize network overhead.
 *   **Privacy-First**: No PII collected by default; data stays on your infrastructure.
 *   **Zero-Config Dashboard**: clear, detailed visualization of your app's health out of the box.
+*   **Session Replay**: Record DOM mutations (via `rrweb`) to replay interactions leading up to an error.
+*   **Source Map Support**: Upload source maps to un-minify stack traces for easier debugging.
 
 ---
 
@@ -148,8 +150,6 @@ rm monitoring.db && npm run dev
 
 ## 🔮 Future Roadmap
 
-*   **🐞 Session Replay**: Record DOM mutations (via `rrweb`) to replay exactly what the user saw before an error.
-*   **🗺️ Source Map Support**: Upload source maps to un-minify stack traces in production.
 *   **🔔 Alerting System**: Webhook integrations (Slack/Discord) for performance regressions or error spikes.
 *   **🌍 Geographic & Device Breakdown**: Visualizations for performance by country and device type.
 *   **🤖 AI Insight Generator**: LLM-powered analysis of error clusters to suggest fixes.
